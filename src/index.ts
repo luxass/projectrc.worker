@@ -96,71 +96,70 @@ export default {
     });
   },
   async scheduled(_event, env, _ctx) {
-    try {
-      const ICONS = new Map<string, string>();
+    const ICONS = new Map<string, string>();
 
-      const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
+    const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
 
-      const { data: commits } = await octokit.repos.listCommits({
-        owner: "luxass",
-        repo: "luxass.dev",
-        per_page: 1, // Get only the latest commit
-      });
+    const { data: commits } = await octokit.repos.listCommits({
+      owner: "luxass",
+      repo: "luxass.dev",
+      per_page: 1, // Get only the latest commit
+    });
 
-      const latestCommitSHA = commits[0].sha;
+    const latestCommitSHA = commits[0].sha;
 
-      const contentPath = "src/content/projects";
+    const contentPath = "src/content/projects";
 
-      const { data: { tree: projectsTree } } = await octokit.git.getTree({
-        owner: "luxass",
-        repo: "luxass.dev",
-        tree_sha: `main:${contentPath}`,
-        recursive: "1",
-      });
+    const { data: { tree: projectsTree } } = await octokit.git.getTree({
+      owner: "luxass",
+      repo: "luxass.dev",
+      tree_sha: `main:${contentPath}`,
+      recursive: "1",
+    });
 
-      const updatedTree: GitTree[] = projectsTree
-        .filter(({ type, path }) => type === "blob" && !path?.endsWith(".gitkeep"))
-        .map(({ path, mode, type }) => ({
-          path: `${contentPath}/${path}`,
-          sha: null,
-          mode: mode as GitTree["mode"],
-          type: type as GitTree["type"],
-        }));
+    const updatedTree: GitTree[] = projectsTree
+      .filter(({ type, path }) => type === "blob" && !path?.endsWith(".gitkeep"))
+      .map(({ path, mode, type }) => ({
+        path: `${contentPath}/${path}`,
+        sha: null,
+        mode: mode as GitTree["mode"],
+        type: type as GitTree["type"],
+      }));
 
-      const { projects } = await fetch(
-        "https://projectrc.luxass.dev/api/projects.json",
-      ).then((res) => res.json() as Promise<{ projects: Project[] }>);
+    const { projects } = await fetch(
+      "https://projectrc.luxass.dev/api/projects.json",
+    ).then((res) => res.json() as Promise<{ projects: Project[] }>);
 
-      if (!projects) {
-        consola.error("no projects found");
-        return;
+    if (!projects) {
+      consola.error("no projects found");
+      return;
+    }
+
+    for (const project of projects.filter((project) => project.readme)) {
+      const fileName = project.name.replace(/^\./, "").replace(/\./g, "-");
+      if (!project.readme) {
+        consola.warn(`no README found for ${project.name}`);
+        continue;
       }
 
-      for (const project of projects.filter((project) => project.readme)) {
-        const fileName = project.name.replace(/^\./, "").replace(/\./g, "-");
-        if (!project.readme) {
-          consola.warn(`no README found for ${project.name}`);
-          continue;
-        }
+      const readmeContent: unknown = await fetch(project.readme, {
+        headers: {
+          "X-MDX": "true",
+        },
+      }).then((res) => res.json());
 
-        const readmeContent: unknown = await fetch(project.readme, {
-          headers: {
-            "X-MDX": "true",
-          },
-        }).then((res) => res.json());
+      if (!readmeContent || typeof readmeContent !== "object" || !("content" in readmeContent) || typeof readmeContent.content !== "string") {
+        consola.error(`No README found for ${project.name}`);
+        continue;
+      }
+      const file = await remark()
+        .use(METADATA, {
+          name: project.name,
+          icons: ICONS,
+        })
+        .process(readmeContent.content || "No README was found.");
 
-        if (!readmeContent || typeof readmeContent !== "object" || !("content" in readmeContent) || typeof readmeContent.content !== "string") {
-          consola.error(`No README found for ${project.name}`);
-          continue;
-        }
-        const file = await remark()
-          .use(METADATA, {
-            name: project.name,
-            icons: ICONS,
-          })
-          .process(readmeContent.content || "No README was found.");
-
-        const frontmatter = `---
+      const frontmatter = `---
                   handle: ${project.name}
                   name: ${project.name}
                   owner: ${project.nameWithOwner.split("/")[0]}
@@ -169,55 +168,52 @@ export default {
                   ${project.npm ? `npm: "${project.npm.name}"` : ""}
                   ${ICONS.has(project.name) ? `icon: ${ICONS.get(project.name)}` : ""}
                   ---`
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .join("\n");
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join("\n");
 
-        // check if updatedTree already contains the file based on fileName
-        const existingFile = updatedTree.find((file) => file.path === `${contentPath}/${fileName}.mdx`);
+      // check if updatedTree already contains the file based on fileName
+      const existingFile = updatedTree.find((file) => file.path === `${contentPath}/${fileName}.mdx`);
 
-        if (!existingFile) {
-          updatedTree.push({
-            path: `${contentPath}/${fileName}.mdx`,
-            mode: "100644",
-            type: "blob",
-            content: `${frontmatter}\n\n${file.toString()}`,
-          });
-          consola.success(`added ${fileName}`);
-        } else {
-          if (existingFile?.sha === null) {
-            delete existingFile?.sha;
-          }
-
-          existingFile!.content = `${frontmatter}\n\n${file.toString()}`;
-          consola.success(`updated ${fileName}`);
+      if (!existingFile) {
+        updatedTree.push({
+          path: `${contentPath}/${fileName}.mdx`,
+          mode: "100644",
+          type: "blob",
+          content: `${frontmatter}\n\n${file.toString()}`,
+        });
+        consola.success(`added ${fileName}`);
+      } else {
+        if (existingFile?.sha === null) {
+          delete existingFile?.sha;
         }
+
+        existingFile!.content = `${frontmatter}\n\n${file.toString()}`;
+        consola.success(`updated ${fileName}`);
       }
-
-      const newTree = await octokit.git.createTree({
-        owner: "luxass",
-        repo: "luxass.dev",
-        base_tree: latestCommitSHA,
-        tree: updatedTree,
-      });
-
-      const newCommit = await octokit.git.createCommit({
-        owner: "luxass",
-        repo: "luxass.dev",
-        message: "chore: update list of projects",
-        tree: newTree.data.sha,
-        parents: [latestCommitSHA],
-      });
-
-      await octokit.git.updateRef({
-        owner: "luxass",
-        repo: "luxass.dev",
-        ref: "heads/main",
-        sha: newCommit.data.sha,
-      });
-    } catch (err) {
-      consola.error(err);
     }
+
+    const newTree = await octokit.git.createTree({
+      owner: "luxass",
+      repo: "luxass.dev",
+      base_tree: latestCommitSHA,
+      tree: updatedTree,
+    });
+
+    const newCommit = await octokit.git.createCommit({
+      owner: "luxass",
+      repo: "luxass.dev",
+      message: "chore: update list of projects",
+      tree: newTree.data.sha,
+      parents: [latestCommitSHA],
+    });
+
+    await octokit.git.updateRef({
+      owner: "luxass",
+      repo: "luxass.dev",
+      ref: "heads/main",
+      sha: newCommit.data.sha,
+    });
   },
 } satisfies ExportedHandler<Env>;

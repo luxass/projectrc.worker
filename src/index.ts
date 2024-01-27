@@ -194,6 +194,29 @@ export default {
       }
     }
 
+    const projectsTreePaths = projectsTree.map((file) => file.path);
+    consola.log(projectsTreePaths);
+    const changes = updatedTree.filter((file) => {
+      // If the sha is null and the file exists in projectsTree, it should be deleted
+      if (file.sha === null && projectsTreePaths.includes(file.path)) {
+        consola.info("File to delete: ", file.path);
+        return true;
+      }
+
+      // If the file does not exist in projectsTree, it is new or has been modified
+      if (!projectsTreePaths.includes(file.path?.replace(`${contentPath}/`, ""))) {
+        consola.info("File to create: ", file.path);
+        return true;
+      }
+
+      return false;
+    });
+
+    if (changes.length === 0) {
+      consola.info("no changes detected");
+      return;
+    }
+
     const newTree = await octokit.git.createTree({
       owner: "luxass",
       repo: "luxass.dev",

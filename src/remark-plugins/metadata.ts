@@ -12,6 +12,9 @@ interface Options {
 export const METADATA: Plugin<Options[], Root> = (options: Options) => {
   const { name, icons } = options;
   return (tree) => {
+    if (name === "github-languages") {
+      consola.info("github-languages", tree);
+    }
     visit(tree, "heading", (node) => {
       if (node.depth === 1) {
         const text = node.children[0] as Text;

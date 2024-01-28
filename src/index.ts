@@ -159,6 +159,14 @@ export default {
         })
         .process(readmeContent.content || "No README was found.");
 
+      if (project.description) {
+        const emoji = project.description.match(/\p{Emoji}/u);
+        if (emoji && !ICONS.has(project.name)) {
+          ICONS.set(project.name, emoji[0]);
+          project.description = project.description.replace(emoji[0], "").trim();
+        }
+      }
+
       const frontmatter = `---
                   handle: ${project.name}
                   name: ${project.name}
@@ -195,17 +203,17 @@ export default {
     }
 
     const projectsTreePaths = projectsTree.map((file) => file.path);
-    consola.log(projectsTreePaths);
     const changes = updatedTree.filter((file) => {
       // If the sha is null and the file exists in projectsTree, it should be deleted
-      if (file.sha === null && projectsTreePaths.includes(file.path)) {
-        consola.info("File to delete: ", file.path);
+      if (file.sha === null && projectsTreePaths.includes(file.path?.replace(`${contentPath}/`, ""))) {
         return true;
       }
 
-      // If the file does not exist in projectsTree, it is new or has been modified
-      if (!projectsTreePaths.includes(file.path?.replace(`${contentPath}/`, ""))) {
-        consola.info("File to create: ", file.path);
+      if (file.content && !projectsTreePaths.includes(file.path?.replace(`${contentPath}/`, ""))) {
+        return true;
+      }
+
+      if (file.content && projectsTreePaths.includes(file.path?.replace(`${contentPath}/`, ""))) {
         return true;
       }
 

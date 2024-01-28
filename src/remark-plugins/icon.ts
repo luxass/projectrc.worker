@@ -9,11 +9,11 @@ interface Options {
   icons: Map<string, string>;
 }
 
-export const METADATA: Plugin<Options[], Root> = (options: Options) => {
+export const ICON: Plugin<Options[], Root> = (options: Options) => {
   const { name, icons } = options;
   return (tree) => {
-    if (name === "github-languages") {
-      consola.info("github-languages", tree);
+    if (name === "github-emojis") {
+      consola.info("github-emojis", tree);
     }
     visit(tree, "heading", (node) => {
       if (node.depth === 1) {

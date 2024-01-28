@@ -2,7 +2,7 @@ import { Octokit } from "@octokit/rest";
 import { consola } from "consola";
 import { remark } from "remark";
 import type { Project } from "./types";
-import { METADATA } from "./remark-plugins/metadata";
+import { ICON } from "./remark-plugins/icon";
 
 export interface Env {
   GITHUB_TOKEN: string;
@@ -153,7 +153,7 @@ export default {
         continue;
       }
       const file = await remark()
-        .use(METADATA, {
+        .use(ICON, {
           name: project.name,
           icons: ICONS,
         })
@@ -161,8 +161,10 @@ export default {
 
       if (project.description) {
         const emoji = project.description.match(/\p{Emoji}/u);
-        if (emoji && !ICONS.has(project.name)) {
-          ICONS.set(project.name, emoji[0]);
+        if (emoji) {
+          if (!ICONS.has(project.name)) {
+            ICONS.set(project.name, emoji[0]);
+          }
           project.description = project.description.replace(emoji[0], "").trim();
         }
       }

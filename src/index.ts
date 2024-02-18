@@ -1,8 +1,4 @@
-import { Octokit } from "@octokit/rest";
-import { consola } from "consola";
-import { remark } from "remark";
-import type { Env, Project } from "./types";
-import { ICON } from "./remark-plugins/icon";
+import type { Env } from "./types";
 import { runCronjob } from "./cronjob";
 
 export default {

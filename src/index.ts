@@ -1,33 +1,33 @@
-import type { Env } from "./types";
-import { runCronjob } from "./cronjob";
+import type { Env } from './types'
+import { runCronjob } from './cronjob'
 
 export default {
   async fetch(
     request,
     ctx,
   ): Promise<Response> {
-    const url = `https://cron.projectrc.luxass.dev`;
+    const url = `https://cron.projectrc.luxass.dev`
 
     const ogUrl = new URL(
       `https://image.luxass.dev/api/image/text?input=${encodeURIComponent(
         JSON.stringify({
           width: 300,
           height: 300,
-          text: "🛠️",
+          text: '🛠️',
         }),
       )}`,
-    );
+    )
 
     // check if the request contains a specific authorization header
-    if (request.headers.get("Authorization") === `Bearer ${ctx.API_TOKEN}`) {
-      await runCronjob(ctx);
+    if (request.headers.get('Authorization') === `Bearer ${ctx.API_TOKEN}`) {
+      await runCronjob(ctx)
       return new Response(JSON.stringify({
-        status: "success",
+        status: 'success',
       }), {
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-      });
+      })
     }
 
     return new Response(/* html */ `
@@ -70,11 +70,11 @@ export default {
       </body>
     </html>`, {
       headers: {
-        "Content-Type": "text/html",
+        'Content-Type': 'text/html',
       },
-    });
+    })
   },
   async scheduled(_event, env, _ctx) {
-    return await runCronjob(env);
+    return await runCronjob(env)
   },
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<Env>

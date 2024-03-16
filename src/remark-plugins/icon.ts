@@ -2,7 +2,6 @@ import { visit } from 'unist-util-visit'
 import type { Root, Text } from 'mdast'
 import type { Plugin } from 'unified'
 import { remove } from 'unist-util-remove'
-import { consola } from 'consola'
 
 interface Options {
   name: string
@@ -12,9 +11,6 @@ interface Options {
 export const ICON: Plugin<Options[], Root> = (options: Options) => {
   const { name, icons } = options
   return (tree) => {
-    if (name === 'github-emojis') {
-      consola.info('github-emojis', tree)
-    }
     visit(tree, 'heading', (node) => {
       if (node.depth === 1) {
         const text = node.children[0] as Text
@@ -22,7 +18,8 @@ export const ICON: Plugin<Options[], Root> = (options: Options) => {
         if (!matched) return
 
         const emoji = matched[0]
-        consola.log(`found emoji for ${name}: ${emoji}`)
+        // eslint-disable-next-line no-console
+        console.log(`found emoji for ${name}: ${emoji}`)
         icons.set(name, emoji)
       }
     })

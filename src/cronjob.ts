@@ -1,5 +1,4 @@
 import { Octokit } from '@octokit/rest'
-import consola from 'consola'
 import { remark } from 'remark'
 import type { Env, GitTree, Project } from './types'
 import { ICON } from './remark-plugins/icon'
@@ -12,7 +11,7 @@ export async function runCronjob(env: Env) {
   const { data: commits } = await octokit.repos.listCommits({
     owner: 'luxass',
     repo: 'luxass.dev',
-    per_page: 1, // Get only the latest commit
+    per_page: 1, // get only the latest commit
   })
 
   const latestCommitSHA = commits[0].sha
@@ -26,28 +25,39 @@ export async function runCronjob(env: Env) {
     recursive: '1',
   })
 
-  const updatedTree: GitTree[] = projectsTree
-    .filter(({ type, path }) => type === 'blob' && !path?.endsWith('.gitkeep'))
-    .map(({ path, mode, type }) => ({
-      path: `${contentPath}/${path}`,
-      sha: null,
-      mode: mode as GitTree['mode'],
-      type: type as GitTree['type'],
-    }))
+  const updatedTree: GitTree[] = []
+
+  for (const project of projectsTree) {
+    if (project.type === 'blob' && !project.path?.endsWith('.gitkeep')) {
+      const { data: { content } } = await octokit.git.getBlob({
+        owner: 'luxass',
+        repo: 'luxass.dev',
+        file_sha: project.sha!,
+      })
+
+      updatedTree.push({
+        path: `${contentPath}/${project.path}`,
+        sha: project.sha!,
+        mode: project.mode as GitTree['mode'],
+        type: project.type as GitTree['type'],
+        content: decodeURIComponent(escape(atob(content))),
+      })
+    }
+  }
 
   const { projects } = await fetch(
     'https://projectrc.luxass.dev/api/projects.json',
   ).then((res) => res.json() as Promise<{ projects: Project[] }>)
 
   if (!projects) {
-    consola.error('no projects found')
+    console.error('no projects found')
     return
   }
 
   for (const project of projects.filter((project) => project.readme)) {
     const fileName = project.name.replace(/^\./, '').replace(/\./g, '-')
     if (!project.readme) {
-      consola.warn(`no README found for ${project.name}`)
+      console.warn(`no README found for ${project.name}`)
       continue
     }
 
@@ -58,7 +68,7 @@ export async function runCronjob(env: Env) {
     }).then((res) => res.json())
 
     if (!readmeContent || typeof readmeContent !== 'object' || !('content' in readmeContent) || typeof readmeContent.content !== 'string') {
-      consola.error(`No README found for ${project.name}`)
+      console.error(`No README found for ${project.name}`)
       continue
     }
     const file = await remark()
@@ -102,21 +112,29 @@ export async function runCronjob(env: Env) {
         type: 'blob',
         content: `${frontmatter}\n\n${file.toString()}`,
       })
-      consola.success(`added ${fileName}`)
+      // eslint-disable-next-line no-console
+      console.info(`added ${fileName}`)
     } else {
-      if (existingFile?.sha === null) {
-        delete existingFile?.sha
+      const newContent = `${frontmatter}\n\n${file.toString()}`
+
+      if (existingFile.content === newContent) {
+        // eslint-disable-next-line no-console
+        console.info(`no changes detected for ${fileName}`)
+        delete existingFile.content
+        continue
       }
 
-      existingFile!.content = `${frontmatter}\n\n${file.toString()}`
-      consola.success(`updated ${fileName}`)
+      delete existingFile?.sha
+      existingFile!.content = newContent
+      // eslint-disable-next-line no-console
+      console.info(`updated ${fileName}`)
     }
   }
 
   const projectsTreePaths = projectsTree.map((file) => file.path)
+
   const changes = updatedTree.filter((file) => {
-    // If the sha is null and the file exists in projectsTree, it should be deleted
-    if (file.sha === null && projectsTreePaths.includes(file.path?.replace(`${contentPath}/`, ''))) {
+    if (file.sha == null && projectsTreePaths.includes(file.path?.replace(`${contentPath}/`, ''))) {
       return true
     }
 
@@ -132,7 +150,8 @@ export async function runCronjob(env: Env) {
   })
 
   if (changes.length === 0) {
-    consola.info('no changes detected')
+    // eslint-disable-next-line no-console
+    console.info('no changes detected')
     return
   }
 

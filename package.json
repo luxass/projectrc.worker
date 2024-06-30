@@ -21,7 +21,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240502.0",
     "@luxass/eslint-config": "^4.4.2",
-    "@types/mdast": "^4.0.3",
+    "@types/mdast": "^4.0.4",
     "eslint": "^9.2.0",
     "typescript": "^5.4.5",
     "unified": "^11.0.4",

@@ -2,7 +2,7 @@
   "name": "robobub.worker",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@9.0.6",
+  "packageManager": "pnpm@9.4.0",
   "scripts": {
     "dev": "wrangler dev",
     "build": "wrangler deploy --dry-run --outdir=dist",
@@ -13,20 +13,20 @@
   "dependencies": {
     "@octokit/core": "^6.1.2",
     "@octokit/plugin-paginate-rest": "^11.3.0",
-    "@octokit/rest": "^20.1.1",
-    "github-schema": "^1.7.11",
+    "@octokit/rest": "^21.0.0",
+    "github-schema": "^1.9.0",
     "remark": "^15.0.1",
-    "zod": "^3.23.6"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240502.0",
-    "@luxass/eslint-config": "^4.4.2",
-    "@types/mdast": "^4.0.3",
-    "eslint": "^9.2.0",
-    "typescript": "^5.4.5",
-    "unified": "^11.0.4",
+    "@cloudflare/workers-types": "^4.20240620.0",
+    "@luxass/eslint-config": "^4.7.0",
+    "@types/mdast": "^4.0.4",
+    "eslint": "^9.6.0",
+    "typescript": "^5.5.2",
+    "unified": "^11.0.5",
     "unist-util-remove": "^4.0.0",
     "unist-util-visit": "^5.0.0",
-    "wrangler": "^3.53.1"
+    "wrangler": "^3.62.0"
   }
 }
